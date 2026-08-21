@@ -12,23 +12,46 @@ struct ContentView: View {
                 FindBar()
             }
 
-            HSplitView {
-                SourceEditorView(
-                    text: $session.document.text,
-                    matches: session.matches,
-                    currentMatchIndex: session.currentMatchIndex
-                )
-                .frame(minWidth: 260)
+            if session.showsRecentsPanel {
+                RecentsPanel()
+            } else {
+                HSplitView {
+                    SourceEditorView(
+                        text: $session.document.text,
+                        matches: session.matches,
+                        currentMatchIndex: session.currentMatchIndex,
+                        visibleLine: session.visibleSourceLine,
+                        followPreviewScroll: session.scrollOrigin == .preview,
+                        onVisibleLineChange: { session.editorDidScroll(to: $0) },
+                        onSelectionChange: { session.editorDidSelect($0) }
+                    )
+                    .frame(minWidth: 260)
 
-                PreviewView(html: session.previewHTML, baseURL: session.previewBaseURL)
+                    PreviewView(
+                        html: session.previewHTML,
+                        baseURL: session.previewBaseURL,
+                        visibleLine: session.visibleSourceLine,
+                        selectRaw: session.previewSelectRaw,
+                        selectVisible: session.previewSelectVisible,
+                        selectToken: session.previewSelectToken,
+                        followEditorScroll: session.scrollOrigin == .editor,
+                        onVisibleLineChange: { session.previewDidScroll(to: $0) }
+                    )
                     .frame(minWidth: 300)
+                }
             }
         }
         .background(Palette.chrome)
         .navigationTitle(session.windowTitle)
         .toolbar {
             ToolbarItemGroup {
-                Button("Open") { session.open() }
+                Menu {
+                    RecentsMenuItems(session: session)
+                } label: {
+                    Text("Open")
+                } primaryAction: {
+                    session.open()
+                }
                 Button("Save") { _ = session.save() }
             }
         }

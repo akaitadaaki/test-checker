@@ -32,4 +32,22 @@ struct MarkdownHTMLRendererTests {
         let page = MarkdownHTMLRenderer.page(from: "hi", title: "a <b> c")
         #expect(page.contains("<title>a &lt;b&gt; c</title>"))
     }
+
+    @Test func wrapsTopLevelBlocksWithSourceLines() {
+        let html = MarkdownHTMLRenderer.fragment(
+            from: """
+            # Hello
+
+            world
+            """
+        )
+        #expect(html.contains("data-line=\"1\""))
+        #expect(html.contains("data-line=\"3\""))
+    }
+
+    @Test func pageIncludesPreviewBridge() {
+        let page = MarkdownHTMLRenderer.page(from: "# Hi", title: "note.md")
+        #expect(page.contains("scrollToSourceLine"))
+        #expect(page.contains("selectPlainText"))
+    }
 }

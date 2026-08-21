@@ -1,10 +1,15 @@
 import AppKit
+import MarkdownCore
 import SwiftUI
 
 struct SourceEditorView: NSViewRepresentable {
     @Binding var text: String
     var matches: [NSRange]
     var currentMatchIndex: Int?
+    var visibleLine: Int
+    var followPreviewScroll: Bool
+    var onVisibleLineChange: (Int) -> Void
+    var onSelectionChange: (NSRange) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -18,6 +23,7 @@ struct SourceEditorView: NSViewRepresentable {
         scroll.borderType = .noBorder
         scroll.drawsBackground = true
         scroll.backgroundColor = NSColor(Palette.slate)
+        scroll.contentView.postsBoundsChangedNotifications = true
 
         let textView = NSTextView()
         textView.delegate = context.coordinator
@@ -54,10 +60,15 @@ struct SourceEditorView: NSViewRepresentable {
 
         scroll.documentView = textView
         context.coordinator.textView = textView
+        context.coordinator.onVisibleLineChange = onVisibleLineChange
+        context.coordinator.onSelectionChange = onSelectionChange
+        context.coordinator.observeScroll(of: scroll)
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        context.coordinator.onVisibleLineChange = onVisibleLineChange
+        context.coordinator.onSelectionChange = onSelectionChange
         guard let textView = scroll.documentView as? NSTextView else { return }
 
         if textView.string != text {
@@ -71,6 +82,19 @@ struct SourceEditorView: NSViewRepresentable {
 
         applyHighlights(to: textView)
         focusCurrentMatch(in: textView, coordinator: context.coordinator)
+
+        if followPreviewScroll, context.coordinator.lastAppliedLine != visibleLine {
+            context.coordinator.isProgrammaticScroll = true
+            context.coordinator.lastAppliedLine = visibleLine
+            SourceEditorLayout.scroll(textView, toLine: visibleLine)
+            DispatchQueue.main.async {
+                context.coordinator.isProgrammaticScroll = false
+            }
+        }
+    }
+
+    static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+        coordinator.stopObservingScroll()
     }
 
     private func applyHighlights(to textView: NSTextView) {
@@ -97,23 +121,94 @@ struct SourceEditorView: NSViewRepresentable {
         let focus = MatchFocus(index: currentMatchIndex, location: range.location, length: range.length)
         guard coordinator.lastFocus != focus else { return }
         coordinator.lastFocus = focus
+        coordinator.isProgrammaticScroll = true
         textView.scrollRangeToVisible(range)
         textView.setSelectedRange(range)
+        DispatchQueue.main.async {
+            coordinator.isProgrammaticScroll = false
+        }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
         weak var textView: NSTextView?
         var lastFocus: MatchFocus?
+        var lastAppliedLine = 0
+        var isProgrammaticScroll = false
+        var onVisibleLineChange: ((Int) -> Void)?
+        var onSelectionChange: ((NSRange) -> Void)?
+        private var boundsObserver: NSObjectProtocol?
 
         init(text: Binding<String>) {
             self.text = text
+        }
+
+        deinit {
+            if let boundsObserver {
+                NotificationCenter.default.removeObserver(boundsObserver)
+            }
+        }
+
+        func observeScroll(of scroll: NSScrollView) {
+            stopObservingScroll()
+            boundsObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scroll.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                self?.boundsDidChange()
+            }
+        }
+
+        func stopObservingScroll() {
+            if let boundsObserver {
+                NotificationCenter.default.removeObserver(boundsObserver)
+                self.boundsObserver = nil
+            }
+        }
+
+        func boundsDidChange() {
+            guard !isProgrammaticScroll, let textView else { return }
+            let line = SourceEditorLayout.firstVisibleLine(in: textView)
+            lastAppliedLine = line
+            onVisibleLineChange?(line)
         }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
         }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            onSelectionChange?(textView.selectedRange())
+        }
+    }
+}
+
+enum SourceEditorLayout {
+    static func scroll(_ textView: NSTextView, toLine line: Int) {
+        guard let layout = textView.layoutManager, let container = textView.textContainer else { return }
+        let offset = SourcePosition.utf16Offset(ofLine: line, in: textView.string)
+        let ns = textView.string as NSString
+        let location = min(offset, ns.length)
+        let range = ns.lineRange(for: NSRange(location: location, length: 0))
+        let glyphRange = layout.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+        var rect = layout.boundingRect(forGlyphRange: glyphRange, in: container)
+        rect.origin.y += textView.textContainerInset.height
+        textView.scroll(NSPoint(x: 0, y: rect.minY))
+    }
+
+    static func firstVisibleLine(in textView: NSTextView) -> Int {
+        guard let layout = textView.layoutManager, let container = textView.textContainer else {
+            return 1
+        }
+        let visible = textView.visibleRect
+        let inset = textView.textContainerInset
+        let point = NSPoint(x: visible.minX + inset.width, y: visible.minY + inset.height)
+        let glyphIndex = layout.glyphIndex(for: point, in: container)
+        let charIndex = layout.characterIndexForGlyph(at: glyphIndex)
+        return SourcePosition.line(atUTF16Offset: charIndex, in: textView.string)
     }
 }
 

@@ -15,6 +15,9 @@ struct MDReaderApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("Open…") { session.open() }
                     .keyboardShortcut("o", modifiers: .command)
+                Menu("Open Recent") {
+                    RecentsMenuItems(session: session)
+                }
                 Button("Save") { _ = session.save() }
                     .keyboardShortcut("s", modifiers: .command)
                 Button("Save As…") { _ = session.saveAs() }
