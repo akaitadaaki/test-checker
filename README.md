@@ -1,7 +1,7 @@
 # Test Checker
 
 Markdown で書いた手動テストの仕様書を読み込み、各ケースの結果をチェックしていく macOS 14+ 向けアプリ。
-[md-reader](https://github.com/akai/md-reader) をベースにしており、SwiftUI とシステム WebKit だけで動く。
+[md-reader](https://github.com/akaitadaaki/md-reader) をベースにしており、SwiftUI とシステム WebKit だけで動く。
 
 ## 考え方
 
