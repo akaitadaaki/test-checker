@@ -99,7 +99,9 @@ final class EditorSession {
 
     func setStatus(_ status: TestStatus, for testCase: TestCase) {
         guard ensureRun() else { return }
-        run?.set(testCase.key, status: status, note: note(for: testCase), at: Date())
+        // 引数評価で run を読むと、run への書き込みアクセスと重なって排他違反で落ちるため先に取り出す
+        let currentNote = note(for: testCase)
+        run?.set(testCase.key, status: status, note: currentNote, at: Date())
         persistRun()
     }
 
@@ -107,7 +109,8 @@ final class EditorSession {
         guard ensureRun() else { return }
         let current = status(for: testCase)
         guard current != .notRun, note != self.note(for: testCase) else { return }
-        run?.set(testCase.key, status: current, note: note, at: run?.result(for: testCase.key)?.checkedAt ?? Date())
+        let checkedAt = run?.result(for: testCase.key)?.checkedAt ?? Date()
+        run?.set(testCase.key, status: current, note: note, at: checkedAt)
         persistRun()
     }
 
