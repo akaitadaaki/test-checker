@@ -1,6 +1,6 @@
 import AppKit
 import Foundation
-import MarkdownCore
+import TestCheckerCore
 import Observation
 import UniformTypeIdentifiers
 
@@ -8,6 +8,8 @@ enum PaneScrollOrigin: Equatable {
     case none
     case editor
     case preview
+    /// チェックリストからのジャンプ。エディタ・プレビュー両方が追従する。
+    case checklist
 }
 
 @MainActor
@@ -29,6 +31,15 @@ final class EditorSession {
     var previewSelectVisible = ""
     var previewSelectToken = 0
     var scrollOrigin: PaneScrollOrigin = .none
+
+    // MARK: テストチェック状態
+    var spec = TestSpec()
+    var run: TestRun?
+    var runURL: URL?
+    var tester: String {
+        didSet { defaults.set(tester, forKey: Self.testerDefaultsKey) }
+    }
+    var availableRunURLs: [URL] = []
 
     var windowTitle: String {
         document.isDirty ? "\(document.displayName) — Edited" : document.displayName
@@ -61,6 +72,10 @@ final class EditorSession {
     private let defaults: UserDefaults
 
     static let recentsDefaultsKey = "mdreader.recentFilePaths"
+    static let testerDefaultsKey = "testchecker.tester"
+
+    var summary: TestSummary { TestSummary(spec: spec, run: run ?? Self.emptyRun) }
+    private static let emptyRun = TestRun(spec: "", tester: "", version: nil, started: .distantPast)
 
     var recentFiles: [RecentFile] {
         recents.files()
@@ -73,7 +88,85 @@ final class EditorSession {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         recents = Self.loadRecents(from: defaults)
+        tester = defaults.string(forKey: Self.testerDefaultsKey) ?? NSFullUserName()
         previewMarkdown = document.text
+    }
+
+    // MARK: - テストチェック
+
+    func status(for testCase: TestCase) -> TestStatus { run?.status(for: testCase.key) ?? .notRun }
+    func note(for testCase: TestCase) -> String { run?.result(for: testCase.key)?.note ?? "" }
+
+    func setStatus(_ status: TestStatus, for testCase: TestCase) {
+        guard ensureRun() else { return }
+        run?.set(testCase.key, status: status, note: note(for: testCase), at: Date())
+        persistRun()
+    }
+
+    func setNote(_ note: String, for testCase: TestCase) {
+        guard ensureRun() else { return }
+        let current = status(for: testCase)
+        guard current != .notRun, note != self.note(for: testCase) else { return }
+        run?.set(testCase.key, status: current, note: note, at: run?.result(for: testCase.key)?.checkedAt ?? Date())
+        persistRun()
+    }
+
+    /// 新しい実施(結果ファイル)を開始する。
+    func startNewRun() {
+        guard let specURL = document.fileURL else {
+            errorMessage = "結果を保存するには、先に仕様書を保存してください。"
+            return
+        }
+        let now = Date()
+        run = TestRun(spec: specURL.lastPathComponent, tester: tester, version: nil, started: now)
+        runURL = TestRunStore.newRunURL(for: specURL, tester: tester, at: now, timeZone: .current)
+        persistRun()
+        refreshAvailableRuns()
+    }
+
+    func selectRun(_ url: URL) {
+        do {
+            run = try TestRunStore.load(from: url)
+            runURL = url
+            errorMessage = nil
+        } catch {
+            errorMessage = "結果ファイルを読めません: \(url.lastPathComponent)\n\(error)"
+        }
+    }
+
+    func jump(to testCase: TestCase) {
+        scrollOrigin = .checklist
+        visibleSourceLine = testCase.line
+        resetScrollOriginLater()
+    }
+
+    /// 実施が無ければ自動で開始する。仕様書が未保存なら false。
+    private func ensureRun() -> Bool {
+        if run != nil { return true }
+        startNewRun()
+        return run != nil
+    }
+
+    private func persistRun() {
+        guard let run, let runURL else { return }
+        do {
+            try TestRunStore.save(run, to: runURL)
+        } catch {
+            errorMessage = "結果を保存できません: \(error.localizedDescription)"
+        }
+    }
+
+    private func refreshAvailableRuns() {
+        guard let specURL = document.fileURL else { availableRunURLs = []; return }
+        availableRunURLs = TestRunStore.existingRunURLs(for: specURL)
+    }
+
+    /// 仕様書を開いた直後: 最新の結果があればそれを読み、無ければ未開始(最初の操作で自動作成)。
+    private func loadLatestRun() {
+        run = nil
+        runURL = nil
+        refreshAvailableRuns()
+        if let latest = availableRunURLs.first { selectRun(latest) }
     }
 
     func documentTextDidChange() {
@@ -146,6 +239,8 @@ final class EditorSession {
         do {
             document = try MarkdownDocument.load(from: url)
             previewMarkdown = document.text
+            spec = TestSpecParser.parse(document.text)
+            loadLatestRun()
             visibleSourceLine = 1
             scrollOrigin = .none
             refreshMatches(resetSelection: true)
@@ -283,6 +378,7 @@ final class EditorSession {
             try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
             previewMarkdown = document.text
+            spec = TestSpecParser.parse(document.text)
         }
     }
 

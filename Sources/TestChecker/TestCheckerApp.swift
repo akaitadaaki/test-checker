@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MDReaderApp: App {
+struct TestCheckerApp: App {
     @State private var session = EditorSession()
 
     var body: some Scene {

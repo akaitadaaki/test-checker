@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkdownCore
+@testable import TestCheckerCore
 
 struct MarkdownDocumentTests {
     @Test func untitledDocumentIsNotDirty() {

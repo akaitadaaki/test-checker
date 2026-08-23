@@ -16,12 +16,15 @@ struct ContentView: View {
                 RecentsPanel()
             } else {
                 HSplitView {
+                    ChecklistPane()
+                        .frame(minWidth: 300, idealWidth: 380)
+
                     SourceEditorView(
                         text: $session.document.text,
                         matches: session.matches,
                         currentMatchIndex: session.currentMatchIndex,
                         visibleLine: session.visibleSourceLine,
-                        followPreviewScroll: session.scrollOrigin == .preview,
+                        followPreviewScroll: session.scrollOrigin == .preview || session.scrollOrigin == .checklist,
                         onVisibleLineChange: { session.editorDidScroll(to: $0) },
                         onSelectionChange: { session.editorDidSelect($0) }
                     )
@@ -34,7 +37,7 @@ struct ContentView: View {
                         selectRaw: session.previewSelectRaw,
                         selectVisible: session.previewSelectVisible,
                         selectToken: session.previewSelectToken,
-                        followEditorScroll: session.scrollOrigin == .editor,
+                        followEditorScroll: session.scrollOrigin == .editor || session.scrollOrigin == .checklist,
                         onVisibleLineChange: { session.previewDidScroll(to: $0) }
                     )
                     .frame(minWidth: 300)
@@ -53,6 +56,8 @@ struct ContentView: View {
                     session.open()
                 }
                 Button("Save") { _ = session.save() }
+                Button("New Run") { session.startNewRun() }
+                    .disabled(session.document.fileURL == nil)
             }
         }
         .onChange(of: session.document.text) { _, _ in

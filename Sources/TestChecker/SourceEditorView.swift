@@ -1,5 +1,5 @@
 import AppKit
-import MarkdownCore
+import TestCheckerCore
 import SwiftUI
 
 struct SourceEditorView: NSViewRepresentable {

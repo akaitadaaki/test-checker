@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>MDReader</string>
+	<string>TestChecker</string>
 	<key>CFBundleIdentifier</key>
 	<string>local.mdreader</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>MDReader</string>
+	<string>TestChecker</string>
 	<key>CFBundleDisplayName</key>
-	<string>MD Reader</string>
+	<string>Test Checker</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

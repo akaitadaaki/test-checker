@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MarkdownCore
+@testable import TestCheckerCore
 
 struct RecentFilesStoreTests {
     @Test func recordsNewestFirst() {

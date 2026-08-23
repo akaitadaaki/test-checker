@@ -2,31 +2,31 @@
 import PackageDescription
 
 let package = Package(
-    name: "MDReader",
+    name: "TestChecker",
     platforms: [
         .macOS(.v14),
     ],
     products: [
-        .library(name: "MarkdownCore", targets: ["MarkdownCore"]),
-        .executable(name: "MDReader", targets: ["MDReader"]),
+        .library(name: "TestCheckerCore", targets: ["TestCheckerCore"]),
+        .executable(name: "TestChecker", targets: ["TestChecker"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
         .target(
-            name: "MarkdownCore",
+            name: "TestCheckerCore",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
             ]
         ),
         .executableTarget(
-            name: "MDReader",
-            dependencies: ["MarkdownCore"]
+            name: "TestChecker",
+            dependencies: ["TestCheckerCore"]
         ),
         .testTarget(
-            name: "MarkdownCoreTests",
-            dependencies: ["MarkdownCore"]
+            name: "TestCheckerCoreTests",
+            dependencies: ["TestCheckerCore"]
         ),
     ]
 )
