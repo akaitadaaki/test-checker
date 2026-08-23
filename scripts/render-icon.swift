@@ -1,6 +1,5 @@
 #!/usr/bin/env swift
 import AppKit
-import CoreText
 import Foundation
 
 enum Palette {
@@ -10,73 +9,96 @@ enum Palette {
     static let copper = CGColor(srgbRed: 0.78, green: 0.38, blue: 0.18, alpha: 1)
     static let pool = CGColor(srgbRed: 0.24, green: 0.49, blue: 0.56, alpha: 1)
     static let ink = CGColor(srgbRed: 0.18, green: 0.24, blue: 0.30, alpha: 0.78)
+    static let pass = CGColor(srgbRed: 0.20, green: 0.62, blue: 0.38, alpha: 1)
+    static let fail = CGColor(srgbRed: 0.80, green: 0.27, blue: 0.25, alpha: 1)
 }
 
 func drawIcon(in ctx: CGContext, size: CGFloat) {
+    // 背景: スレート。上端にコッパーのレール(md-reader 由来の家族感)
     let rail = max(2, round(size * 0.072))
-    let split = round(size * 0.40)
-    let contentTop = size - rail
-
-    ctx.setFillColor(Palette.copper)
-    ctx.fill(CGRect(x: 0, y: contentTop, width: size, height: rail))
-
     ctx.setFillColor(Palette.slate)
-    ctx.fill(CGRect(x: 0, y: 0, width: split, height: contentTop))
+    ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    ctx.setFillColor(Palette.copper)
+    ctx.fill(CGRect(x: 0, y: size - rail, width: size, height: rail))
 
+    // 紙のカード
+    let inset = size * 0.12
+    let card = CGRect(x: inset, y: inset * 0.9, width: size - inset * 2, height: size - rail - inset * 1.7)
+    let radius = size * 0.05
     ctx.setFillColor(Palette.paper)
-    ctx.fill(CGRect(x: split, y: 0, width: size - split, height: contentTop))
+    ctx.addPath(CGPath(roundedRect: card, cornerWidth: radius, cornerHeight: radius, transform: nil))
+    ctx.fillPath()
 
-    let gutter = max(1, round(size * 0.012))
-    ctx.setFillColor(Palette.pool)
-    ctx.fill(CGRect(x: split - gutter / 2, y: 0, width: gutter, height: contentTop))
-
-    if size >= 32 {
-        drawHash(in: ctx, size: size, split: split, contentTop: contentTop)
+    guard size >= 32 else {
+        // 極小サイズは緑チェック1つだけ
+        drawCheck(in: ctx, box: card.insetBy(dx: card.width * 0.2, dy: card.height * 0.2), color: Palette.pass, lineWidth: max(2, size * 0.1))
+        return
     }
 
-    if size >= 32 {
-        drawLines(in: ctx, size: size, split: split, contentTop: contentTop)
-    }
-}
+    // 行: [状態ボックス] [テキスト線]
+    let rows: [(status: Status, width: CGFloat)] = [(.pass, 0.9), (.fail, 0.62), (.pass, 0.78), (.empty, 0.5)]
+    let rowCount = size >= 64 ? rows.count : 3
+    let padding = card.width * 0.1
+    let rowHeight = (card.height - padding * 2) / CGFloat(rowCount)
+    let box = rowHeight * 0.6
+    let lineHeight = max(2, round(size * 0.03))
 
-func drawHash(in ctx: CGContext, size: CGFloat, split: CGFloat, contentTop: CGFloat) {
-    let fontSize = size * (size >= 128 ? 0.42 : 0.36)
-    let font = CTFontCreateWithName("SFMono-Medium" as CFString, fontSize, nil)
-    let attrs: [NSAttributedString.Key: Any] = [
-        .font: font,
-        .foregroundColor: NSColor(cgColor: Palette.editorInk) ?? .white,
-    ]
-    let line = CTLineCreateWithAttributedString(NSAttributedString(string: "#", attributes: attrs))
-    let bounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
-    let x = (split - bounds.width) / 2 - bounds.minX
-    let y = (contentTop - bounds.height) / 2 - bounds.minY - size * 0.02
-    ctx.textPosition = CGPoint(x: round(x), y: round(y))
-    CTLineDraw(line, ctx)
-}
+    for (i, row) in rows.prefix(rowCount).enumerated() {
+        let centerY = card.maxY - padding - rowHeight * (CGFloat(i) + 0.5)
+        let boxRect = CGRect(x: card.minX + padding, y: centerY - box / 2, width: box, height: box)
+        drawBox(in: ctx, rect: boxRect, status: row.status, size: size)
 
-func drawLines(in ctx: CGContext, size: CGFloat, split: CGFloat, contentTop: CGFloat) {
-    let inset = max(4, size * 0.08)
-    let left = split + inset
-    let maxWidth = size - left - inset
-    let lineHeight = max(2, round(size * 0.028))
-    let gap = size * 0.052
-    let widths: [CGFloat] = size >= 64 ? [0.92, 0.68, 0.84, 0.46] : [0.88, 0.62]
-    var y = contentTop - inset - size * 0.06 - lineHeight
-
-    ctx.setFillColor(Palette.ink)
-    for width in widths {
-        let rect = CGRect(x: left, y: y, width: maxWidth * width, height: lineHeight)
-        let path = CGPath(
-            roundedRect: rect,
-            cornerWidth: lineHeight / 2,
-            cornerHeight: lineHeight / 2,
-            transform: nil
-        )
-        ctx.addPath(path)
+        let lineX = boxRect.maxX + padding * 0.8
+        let maxWidth = card.maxX - padding - lineX
+        let lineRect = CGRect(x: lineX, y: centerY - lineHeight / 2, width: maxWidth * row.width, height: lineHeight)
+        ctx.setFillColor(Palette.ink)
+        ctx.addPath(CGPath(roundedRect: lineRect, cornerWidth: lineHeight / 2, cornerHeight: lineHeight / 2, transform: nil))
         ctx.fillPath()
-        y -= lineHeight + gap
-        if y < size * 0.08 { break }
     }
+}
+
+enum Status { case pass, fail, empty }
+
+func drawBox(in ctx: CGContext, rect: CGRect, status: Status, size: CGFloat) {
+    let radius = rect.width * 0.22
+    let path = CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+    let stroke = max(1.5, size * 0.02)
+    switch status {
+    case .pass:
+        ctx.setFillColor(Palette.pass)
+        ctx.addPath(path); ctx.fillPath()
+        drawCheck(in: ctx, box: rect, color: Palette.paper, lineWidth: stroke * 1.4)
+    case .fail:
+        ctx.setFillColor(Palette.fail)
+        ctx.addPath(path); ctx.fillPath()
+        drawCross(in: ctx, box: rect, color: Palette.paper, lineWidth: stroke * 1.4)
+    case .empty:
+        ctx.setStrokeColor(Palette.ink)
+        ctx.setLineWidth(stroke)
+        ctx.addPath(CGPath(roundedRect: rect.insetBy(dx: stroke / 2, dy: stroke / 2), cornerWidth: radius, cornerHeight: radius, transform: nil))
+        ctx.strokePath()
+    }
+}
+
+func drawCheck(in ctx: CGContext, box: CGRect, color: CGColor, lineWidth: CGFloat) {
+    ctx.setStrokeColor(color)
+    ctx.setLineWidth(lineWidth)
+    ctx.setLineCap(.round)
+    ctx.setLineJoin(.round)
+    ctx.move(to: CGPoint(x: box.minX + box.width * 0.24, y: box.minY + box.height * 0.5))
+    ctx.addLine(to: CGPoint(x: box.minX + box.width * 0.43, y: box.minY + box.height * 0.3))
+    ctx.addLine(to: CGPoint(x: box.minX + box.width * 0.77, y: box.minY + box.height * 0.7))
+    ctx.strokePath()
+}
+
+func drawCross(in ctx: CGContext, box: CGRect, color: CGColor, lineWidth: CGFloat) {
+    ctx.setStrokeColor(color)
+    ctx.setLineWidth(lineWidth)
+    ctx.setLineCap(.round)
+    let r = box.insetBy(dx: box.width * 0.28, dy: box.height * 0.28)
+    ctx.move(to: CGPoint(x: r.minX, y: r.minY)); ctx.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+    ctx.move(to: CGPoint(x: r.minX, y: r.maxY)); ctx.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+    ctx.strokePath()
 }
 
 func renderPNG(size: Int, to url: URL) throws {
