@@ -76,7 +76,13 @@ project: <プロジェクト名>
 - [ ] LOGIN-001 正しく入力するとログインでき、ダッシュボードが出て、通知も出る   ← 悪い: 期待が3つ。3ケースに分ける
 ```
 
-## 参考
+## 参考(このスキルのディレクトリ内)
 
-- フォーマットの詳細と結果ファイルの仕様: リポジトリの `README.md`, `docs/USAGE.md`
-- サンプル: `examples/login.md`
+- `templates/sample-login.md` — 完成形のサンプル。新規作成時はこれをコピーして書き換えてよい
+- `scripts/lint_spec.py` — 形式チェック
+- アプリ本体・フォーマット詳細: https://github.com/akaitadaaki/test-checker (`README.md`, `docs/USAGE.md`)
+
+## 保存場所の目安
+
+テスト対象プロジェクトの `docs/tests/<機能名>.md` など、**仕様書とその結果フォルダ(`<機能名>.results/`)を
+一緒に Git 管理できる場所** に置く。依頼者が場所を指定していなければ提案して確認する。

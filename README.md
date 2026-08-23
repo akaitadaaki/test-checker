@@ -90,6 +90,15 @@ Claude Code / Codex / Cursor のいずれでも「テスト仕様書を書いて
 - Claude Code: `.claude/skills/test-spec` / Codex: `.codex/skills/test-spec`（symlink） / Cursor: `.cursor/rules/test-spec.mdc`
 - 形式チェック: `python3 skills/test-spec/scripts/lint_spec.py <spec.md>`
 
+他のプロジェクトでも使うには、一度だけ次を実行する（`~/.claude/skills` と `~/.codex/skills` に symlink を張るので、このリポジトリを更新すれば自動で反映される）:
+
+```bash
+make install-skill
+```
+
+Cursor はグローバルなルールファイルを持たないため、Settings › Rules › User Rules に
+「テスト仕様書を作成・更新するときは `<このリポジトリ>/skills/test-spec/SKILL.md` を読んで従うこと」と1行追加する。
+
 ## 構成
 
 - `TestCheckerCore` — 仕様書パーサ・結果ファイル・集計・Markdown 変換・検索（テスト対象）
