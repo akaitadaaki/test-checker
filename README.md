@@ -65,6 +65,8 @@ started: 2026-08-23T09:30:00Z
 
 ## 使い方
 
+詳しい手順（仕様書の作り方、担当者名の設定、実施の切り替え、名前の変更など）は **[docs/USAGE.md](docs/USAGE.md)** を参照。
+
 ```bash
 make test    # コアのテスト
 make run     # 開発実行
