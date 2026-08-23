@@ -1,0 +1,7 @@
+---
+description: Test Checker 用の手動テスト仕様書(Markdown)を作成・更新するときの手順。テスト仕様書・手動テスト項目・テストケースの作成依頼で適用する。
+globs: ["**/*.md"]
+alwaysApply: false
+---
+テスト仕様書(手動テスト項目)を作成・更新するときは、必ず `skills/test-spec/SKILL.md` を読み、そこに書かれたフォーマットと手順に従うこと。
+書き終えたら `python3 skills/test-spec/scripts/lint_spec.py <file.md>` で検証し、エラーを 0 にすること。

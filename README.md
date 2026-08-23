@@ -81,6 +81,15 @@ make app     # TestChecker.app を作って開く
 
 中央のエディタで仕様書を編集・保存（⌘S）でき、右ペインにプレビューが出る。検索は ⌘F。
 
+## AI エージェント用スキル（仕様書の自動作成）
+
+`skills/test-spec/` に、機能説明やコードからこのアプリ用のテスト仕様書を書かせるためのスキルを同梱している。
+Claude Code / Codex / Cursor のいずれでも「テスト仕様書を書いて」と頼めば同じ手順・フォーマットで生成する。
+
+- 本体: [skills/test-spec/SKILL.md](skills/test-spec/SKILL.md)（Agent Skills 形式）
+- Claude Code: `.claude/skills/test-spec` / Codex: `.codex/skills/test-spec`（symlink） / Cursor: `.cursor/rules/test-spec.mdc`
+- 形式チェック: `python3 skills/test-spec/scripts/lint_spec.py <spec.md>`
+
 ## 構成
 
 - `TestCheckerCore` — 仕様書パーサ・結果ファイル・集計・Markdown 変換・検索（テスト対象）
