@@ -16,8 +16,16 @@ public enum TestRunStore {
         let safeTester = tester.map { ch -> Character in
             ch == "/" || ch == ":" || ch == "\\" || ch.isWhitespace ? "_" : ch
         }
-        return resultsDirectory(for: specURL)
-            .appendingPathComponent("\(f.string(from: date))-\(String(safeTester)).md")
+        let dir = resultsDirectory(for: specURL)
+        let base = "\(f.string(from: date))-\(String(safeTester))"
+        // 同じ分に同じ担当者が開始した場合は既存ファイルを上書きせず連番を付ける
+        var candidate = dir.appendingPathComponent("\(base).md")
+        var n = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            candidate = dir.appendingPathComponent("\(base)-\(n).md")
+            n += 1
+        }
+        return candidate
     }
 
     /// 新しい(ファイル名の降順)順に返す。`.md` 以外は無視する。

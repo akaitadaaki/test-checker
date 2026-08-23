@@ -55,3 +55,17 @@ struct TestRunStoreTests {
         #expect(TestRunStore.existingRunURLs(for: URL(fileURLWithPath: "/nonexistent/x.md")).isEmpty)
     }
 }
+
+extension TestRunStoreTests {
+    @Test func 同名の結果ファイルがあれば連番を付けて避ける() throws {
+        let dir = try tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let spec = dir.appendingPathComponent("login.md")
+        let tz = TimeZone(identifier: "Asia/Tokyo")!
+        let first = TestRunStore.newRunURL(for: spec, tester: "akai", at: now, timeZone: tz)
+        try FileManager.default.createDirectory(at: first.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "x".write(to: first, atomically: true, encoding: .utf8)
+        let second = TestRunStore.newRunURL(for: spec, tester: "akai", at: now, timeZone: tz)
+        #expect(second.lastPathComponent == "20260823-1830-akai-2.md")
+    }
+}
