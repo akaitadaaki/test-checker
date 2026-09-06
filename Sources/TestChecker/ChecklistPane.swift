@@ -94,17 +94,22 @@ struct ChecklistPane: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // セグメントコントロールはアイコンを単色テンプレート化してしまうため、
+    // 状態色を出せる自前のボタン列にしている。
     private var filterPicker: some View {
-        Picker("絞り込み", selection: $filter) {
-            Text("すべて").tag(TestStatus?.none)
+        HStack(spacing: 2) {
+            FilterButton(isSelected: filter == nil, help: "すべて") {
+                Text("すべて").font(.caption)
+            } action: { filter = nil }
             ForEach(Self.filterOrder, id: \.self) { status in
-                Image(systemName: status.symbol)
-                    .help(status.displayName)
-                    .tag(TestStatus?.some(status))
+                FilterButton(isSelected: filter == status, help: status.displayName) {
+                    Image(systemName: status.symbol)
+                        .foregroundStyle(status.color)
+                } action: { filter = status }
             }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
+        .padding(2)
+        .background(Palette.cardBackground, in: RoundedRectangle(cornerRadius: 7))
         .help("状態で絞り込む")
     }
 
@@ -127,6 +132,34 @@ struct ChecklistPane: View {
             }
         }
         return groups
+    }
+}
+
+/// フィルタバーの1ボタン。選択中はアクセント枠付きの白/暗背景で強調する。
+private struct FilterButton<Content: View>: View {
+    let isSelected: Bool
+    let help: String
+    @ViewBuilder let content: Content
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            content
+                .frame(maxWidth: .infinity, minHeight: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            isSelected ? AnyShapeStyle(Palette.paneBackground) : AnyShapeStyle(.clear),
+            in: RoundedRectangle(cornerRadius: 5)
+        )
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(.tint, lineWidth: 1)
+            }
+        }
+        .help(help)
     }
 }
 
@@ -187,11 +220,14 @@ struct CaseRow: View {
                         }
                     }
                 } label: {
+                    // borderlessButton はラベルを単色テンプレート化して状態色を潰すため、
+                    // plain ボタンスタイルで色をそのまま描画させる
                     Image(systemName: status.symbol)
                         .foregroundStyle(status.color)
                         .font(.title3)
                 }
-                .menuStyle(.borderlessButton)
+                .menuStyle(.button)
+                .buttonStyle(.plain)
                 .menuIndicator(.hidden)
                 .fixedSize()
 
