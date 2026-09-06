@@ -40,6 +40,8 @@ final class EditorSession {
         didSet { defaults.set(tester, forKey: Self.testerDefaultsKey) }
     }
     var availableRunURLs: [URL] = []
+    /// 中央のソースエディタを表示するか。既定は非表示(チェック作業を主とするため)。
+    var showsEditor = false
 
     var windowTitle: String {
         document.isDirty ? "\(document.displayName) — Edited" : document.displayName
@@ -57,6 +59,10 @@ final class EditorSession {
 
     var previewBaseURL: URL? {
         document.fileURL?.deletingLastPathComponent()
+    }
+
+    var previewStatusesJSON: String {
+        TestStatusOverlay.json(spec: spec, run: run)
     }
 
     var previewHTML: String {
