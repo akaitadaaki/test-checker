@@ -7,7 +7,7 @@ struct RecentsPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Recent")
                 .font(.system(size: 11, weight: .semibold, design: .serif))
-                .foregroundStyle(Palette.mutedInk)
+                .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .tracking(1.2)
                 .padding(.bottom, 18)
@@ -20,12 +20,12 @@ struct RecentsPanel: View {
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             Text(file.url.lastPathComponent)
                                 .font(.system(size: 16, weight: .medium, design: .serif))
-                                .foregroundStyle(Palette.slate)
+                                .foregroundStyle(.primary)
                                 .lineLimit(1)
                             Spacer(minLength: 12)
                             Text(abbreviatedDirectory(for: file.url))
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(Palette.mutedInk)
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .truncationMode(.head)
                         }
@@ -34,7 +34,7 @@ struct RecentsPanel: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .background(Palette.chrome.opacity(0.7))
+                    .background(Palette.cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 }
             }
@@ -54,7 +54,7 @@ struct RecentsPanel: View {
         .padding(40)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Palette.paper)
+        .background(Palette.paneBackground)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Palette.copper)

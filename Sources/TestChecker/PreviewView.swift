@@ -9,6 +9,7 @@ struct PreviewView: NSViewRepresentable {
     var selectRaw: String
     var selectVisible: String
     var selectToken: Int
+    var statusesJSON: String
     var followEditorScroll: Bool
     var onVisibleLineChange: (Int) -> Void
 
@@ -32,6 +33,7 @@ struct PreviewView: NSViewRepresentable {
         context.coordinator.selectRaw = selectRaw
         context.coordinator.selectVisible = selectVisible
         context.coordinator.selectToken = selectToken
+        context.coordinator.statusesJSON = statusesJSON
 
         if html != context.coordinator.loadedHTML {
             context.coordinator.loadedHTML = html
@@ -47,6 +49,10 @@ struct PreviewView: NSViewRepresentable {
         if context.coordinator.lastSelectToken != selectToken {
             context.coordinator.applySelection(on: webView)
         }
+
+        if context.coordinator.lastStatusesJSON != statusesJSON {
+            context.coordinator.applyStatuses(on: webView)
+        }
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -59,6 +65,8 @@ struct PreviewView: NSViewRepresentable {
         var selectRaw = ""
         var selectVisible = ""
         var selectToken = 0
+        var statusesJSON = "{}"
+        var lastStatusesJSON: String?
         var lastScrolledLine = 0
         var lastSelectToken = -1
         var needsRestoreAfterLoad = false
@@ -82,6 +90,7 @@ struct PreviewView: NSViewRepresentable {
             needsRestoreAfterLoad = false
             applyScroll(on: webView, line: visibleLine)
             applySelection(on: webView)
+            applyStatuses(on: webView)
         }
 
         func userContentController(
@@ -106,6 +115,11 @@ struct PreviewView: NSViewRepresentable {
         func applyScroll(on webView: WKWebView, line: Int) {
             lastScrolledLine = line
             webView.evaluateJavaScript("scrollToSourceLine(\(line))", completionHandler: nil)
+        }
+
+        func applyStatuses(on webView: WKWebView) {
+            lastStatusesJSON = statusesJSON
+            webView.evaluateJavaScript("applyTestStatuses(\(statusesJSON))", completionHandler: nil)
         }
 
         func applySelection(on webView: WKWebView) {

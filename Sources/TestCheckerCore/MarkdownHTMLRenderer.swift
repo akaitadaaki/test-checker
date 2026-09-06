@@ -51,9 +51,8 @@ public enum MarkdownHTMLRenderer: Sendable {
               font-family: "New York", "Iowan Old Style", Palatino, "Hiragino Mincho ProN", serif;
               font-size: 17px;
               line-height: 1.55;
-              max-width: 40rem;
-              margin: 0 auto;
-              padding: 2.25rem 1.5rem 4rem;
+              margin: 0;
+              padding: 2.25rem 2rem 4rem;
             }
             h1, h2, h3, h4 {
               font-weight: 650;
@@ -94,6 +93,62 @@ public enum MarkdownHTMLRenderer: Sendable {
             img { max-width: 100%; }
             hr { border: 0; border-top: 1px solid var(--rule); }
             .md-block { scroll-margin-top: 0.5rem; }
+            :root {
+              --pass: #2e9e5b;
+              --fail: #cc4440;
+              --skip: #8a97a3;
+              --recheck: #d98324;
+            }
+            @media (prefers-color-scheme: dark) {
+              :root {
+                --pass: #4cc07a;
+                --fail: #e0625e;
+                --skip: #9aa8b4;
+                --recheck: #e69a45;
+              }
+            }
+            li.test-item {
+              list-style: none;
+              border-left: 3px solid transparent;
+              border-radius: 4px;
+              padding: 0.12em 0.5em 0.12em 0.6em;
+              margin: 0.12em 0 0.12em -1.1em;
+            }
+            li.test-item > input[type="checkbox"] { display: none; }
+            .test-mark {
+              display: inline-block;
+              width: 1.15em;
+              font-family: ui-monospace, "SF Mono", Menlo, monospace;
+              font-weight: 700;
+              margin-right: 0.35em;
+            }
+            li.test-pass    { border-left-color: var(--pass);    background: color-mix(in srgb, var(--pass) 12%, transparent); }
+            li.test-fail    { border-left-color: var(--fail);    background: color-mix(in srgb, var(--fail) 12%, transparent); }
+            li.test-skip    { border-left-color: var(--skip);    background: color-mix(in srgb, var(--skip) 14%, transparent); color: var(--muted); }
+            li.test-recheck { border-left-color: var(--recheck); background: color-mix(in srgb, var(--recheck) 14%, transparent); }
+            .test-note {
+              display: block;
+              font-size: 0.82em;
+              line-height: 1.4;
+              margin-top: 0.25em;
+              padding: 0.2em 0.55em;
+              border-radius: 4px;
+              border: 1px dashed;
+              width: fit-content;
+              color: var(--muted);
+            }
+            .test-note::before {
+              content: "💬 メモ: ";
+              font-weight: 650;
+            }
+            li.test-pass    > .test-note { border-color: var(--pass); }
+            li.test-fail    > .test-note { border-color: var(--fail); color: var(--fail); }
+            li.test-skip    > .test-note { border-color: var(--skip); }
+            li.test-recheck > .test-note { border-color: var(--recheck); color: var(--recheck); }
+            li.test-pass    > .test-mark { color: var(--pass); }
+            li.test-fail    > .test-mark { color: var(--fail); }
+            li.test-skip    > .test-mark { color: var(--skip); }
+            li.test-recheck > .test-mark { color: var(--recheck); }
             ::selection {
               background: rgba(199, 90, 46, 0.35);
               color: inherit;
@@ -226,8 +281,42 @@ public enum MarkdownHTMLRenderer: Sendable {
         const last = nodes[nodes.length - 1];
         if (!last) return null;
         return { node: last.node, offset: last.node.data.length };
+      },
+      // 状態: {"12":{"status":"pass","note":"..."}} 形式。列0のタスク項目(li直下にcheckbox)へ行順に対応付ける。
+      // パーサ(TestSpecParser)と同じく、ネストしたタスクは対象外。
+      applyTestStatuses(byLine) {
+        const marks = { pass: '\u2713', fail: '\u2715', skip: '\u2212', recheck: '?' };
+        const lines = Object.keys(byLine).map(Number).sort((a, b) => a - b);
+        for (const block of this.blocks()) {
+          const start = Number(block.dataset.line);
+          const end = Number(block.dataset.endLine || block.dataset.line);
+          const items = Array.from(block.querySelectorAll(':scope > ul > li, :scope > ol > li'))
+            .filter(li => li.querySelector(':scope > input[type="checkbox"]'));
+          const blockLines = lines.filter(l => l >= start && l <= end);
+          items.forEach((li, i) => {
+            li.classList.remove('test-item', 'test-pass', 'test-fail', 'test-skip', 'test-recheck');
+            const mark = li.querySelector(':scope > .test-mark');
+            if (mark) mark.remove();
+            const oldNote = li.querySelector(':scope > .test-note');
+            if (oldNote) oldNote.remove();
+            const entry = i < blockLines.length ? byLine[blockLines[i]] : null;
+            if (!entry) return;
+            li.classList.add('test-item', 'test-' + entry.status);
+            const span = document.createElement('span');
+            span.className = 'test-mark';
+            span.textContent = marks[entry.status] || '';
+            li.insertBefore(span, li.firstChild);
+            if (entry.note) {
+              const note = document.createElement('span');
+              note.className = 'test-note';
+              note.textContent = entry.note;
+              li.appendChild(note);
+            }
+          });
+        }
       }
     };
+    window.applyTestStatuses = (byLine) => PreviewBridge.applyTestStatuses(byLine);
     window.scrollToSourceLine = (line) => PreviewBridge.scrollToSourceLine(line);
     window.selectPlainText = (raw, visible, line) => PreviewBridge.selectPlainText(raw, visible, line);
     let scrollTick = null;

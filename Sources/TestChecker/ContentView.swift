@@ -17,37 +17,50 @@ struct ContentView: View {
             } else {
                 HSplitView {
                     ChecklistPane()
-                        .frame(minWidth: 300, idealWidth: 380)
+                        .frame(minWidth: 300, idealWidth: 380, maxWidth: 640, maxHeight: .infinity)
 
-                    SourceEditorView(
-                        text: $session.document.text,
-                        matches: session.matches,
-                        currentMatchIndex: session.currentMatchIndex,
-                        visibleLine: session.visibleSourceLine,
-                        followPreviewScroll: session.scrollOrigin == .preview || session.scrollOrigin == .checklist,
-                        onVisibleLineChange: { session.editorDidScroll(to: $0) },
-                        onSelectionChange: { session.editorDidSelect($0) }
-                    )
-                    .frame(minWidth: 260)
+                    // エディタとプレビューは入れ子の分割ビューにまとめる。
+                    // 出し入れによる幅の再配分をこのグループ内に閉じ込め、
+                    // エディタを隠すとプレビューが元の幅に戻るようにするため。
+                    HSplitView {
+                        if session.showsEditor {
+                            SourceEditorView(
+                                text: $session.document.text,
+                                matches: session.matches,
+                                currentMatchIndex: session.currentMatchIndex,
+                                visibleLine: session.visibleSourceLine,
+                                followPreviewScroll: session.scrollOrigin == .preview || session.scrollOrigin == .checklist,
+                                onVisibleLineChange: { session.editorDidScroll(to: $0) },
+                                onSelectionChange: { session.editorDidSelect($0) }
+                            )
+                            .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+                        }
 
-                    PreviewView(
-                        html: session.previewHTML,
-                        baseURL: session.previewBaseURL,
-                        visibleLine: session.visibleSourceLine,
-                        selectRaw: session.previewSelectRaw,
-                        selectVisible: session.previewSelectVisible,
-                        selectToken: session.previewSelectToken,
-                        followEditorScroll: session.scrollOrigin == .editor || session.scrollOrigin == .checklist,
-                        onVisibleLineChange: { session.previewDidScroll(to: $0) }
-                    )
-                    .frame(minWidth: 300)
+                        PreviewView(
+                            html: session.previewHTML,
+                            baseURL: session.previewBaseURL,
+                            visibleLine: session.visibleSourceLine,
+                            selectRaw: session.previewSelectRaw,
+                            selectVisible: session.previewSelectVisible,
+                            selectToken: session.previewSelectToken,
+                            statusesJSON: session.previewStatusesJSON,
+                            followEditorScroll: session.scrollOrigin == .editor || session.scrollOrigin == .checklist,
+                            onVisibleLineChange: { session.previewDidScroll(to: $0) }
+                        )
+                        .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
-        .background(Palette.chrome)
+        .background(Palette.paneBackground)
         .navigationTitle(session.windowTitle)
         .toolbar {
             ToolbarItemGroup {
+                Toggle(isOn: $session.showsEditor) {
+                    Label("エディタを表示/非表示", systemImage: "square.and.pencil")
+                }
+                .help(session.showsEditor ? "編集エリアを隠す" : "編集エリアを表示する")
                 Menu {
                     RecentsMenuItems(session: session)
                 } label: {

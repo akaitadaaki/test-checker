@@ -4,6 +4,8 @@ import TestCheckerCore
 /// 左ペイン: 進捗サマリ + 実施選択 + テストケース一覧。
 struct ChecklistPane: View {
     @Environment(EditorSession.self) private var session
+    /// 絞り込み対象の状態。nil はすべて表示。
+    @State private var filter: TestStatus?
 
     var body: some View {
         @Bindable var session = session
@@ -16,6 +18,8 @@ struct ChecklistPane: View {
                     systemImage: "checklist",
                     description: Text("仕様書に `- [ ] ID-001 タイトル` 形式の行を書いてください。")
                 )
+            } else if groupedCases.isEmpty {
+                emptyFilterView
             } else {
                 List {
                     ForEach(groupedCases, id: \.heading) { group in
@@ -29,7 +33,7 @@ struct ChecklistPane: View {
                 .listStyle(.inset)
             }
         }
-        .background(Palette.chrome)
+        .background(Palette.paneBackground)
     }
 
     private var header: some View {
@@ -46,6 +50,7 @@ struct ChecklistPane: View {
             }
             runPicker
             SummaryBar(summary: session.summary)
+            filterPicker
         }
         .padding(12)
     }
@@ -72,6 +77,39 @@ struct ChecklistPane: View {
         .foregroundStyle(.secondary)
     }
 
+    /// 絞り込み結果が0件のときの表示。ペインの幅を押し広げないよう固有幅を持たせない。
+    private var emptyFilterView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.title2)
+                .foregroundStyle(.tertiary)
+            Text("「\(filter?.displayName ?? "すべて")」のケースはありません")
+                .font(.callout)
+            Text("絞り込みを変更してください。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var filterPicker: some View {
+        Picker("絞り込み", selection: $filter) {
+            Text("すべて").tag(TestStatus?.none)
+            ForEach(Self.filterOrder, id: \.self) { status in
+                Image(systemName: status.symbol)
+                    .help(status.displayName)
+                    .tag(TestStatus?.some(status))
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .help("状態で絞り込む")
+    }
+
+    private static let filterOrder: [TestStatus] = [.notRun, .pass, .fail, .skip, .recheck]
+
     private struct Group {
         let heading: String
         let cases: [TestCase]
@@ -79,7 +117,8 @@ struct ChecklistPane: View {
 
     private var groupedCases: [Group] {
         var groups: [Group] = []
-        for c in session.spec.cases {
+        let cases = session.spec.cases.filter { filter == nil || session.status(for: $0) == filter }
+        for c in cases {
             let heading = c.headingPath.joined(separator: " › ")
             if groups.last?.heading == heading {
                 groups[groups.count - 1] = Group(heading: heading, cases: groups[groups.count - 1].cases + [c])
@@ -208,7 +247,7 @@ extension TestStatus {
 
     var color: Color {
         switch self {
-        case .notRun: .gray.opacity(0.4)
+        case .notRun: .secondary.opacity(0.6)
         case .pass: .green
         case .fail: .red
         case .skip: .gray
