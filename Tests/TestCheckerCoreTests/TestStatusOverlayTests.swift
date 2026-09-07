@@ -16,16 +16,21 @@ struct TestStatusOverlayTests {
         ])
     }
 
-    @Test func 未実施のケースは含めない() {
+    // 位置の対応付けはブロック内の順番に依存するため、未実施の行も欠かさず含める必要がある
+    // (欠けると後続ケースの表示位置が前へズレる)
+    @Test func 未実施のケースもnotRunとして含める() {
         let spec = TestSpecParser.parse("- [ ] A-1 a\n- [ ] A-2 b")
         var run = TestRun(spec: "s.md", tester: "t", version: nil, started: now)
-        run.set("A-1", status: .fail, note: "", at: now)
-        #expect(TestStatusOverlay.statusesByLine(spec: spec, run: run) == [1: .init(status: "fail", note: "")])
+        run.set("A-2", status: .fail, note: "", at: now)
+        #expect(TestStatusOverlay.statusesByLine(spec: spec, run: run) == [
+            1: .init(status: "notRun", note: ""),
+            2: .init(status: "fail", note: ""),
+        ])
     }
 
-    @Test func runがなければ空() {
+    @Test func runがなくても全ケースをnotRunとして含める() {
         let spec = TestSpecParser.parse("- [ ] A-1 a")
-        #expect(TestStatusOverlay.statusesByLine(spec: spec, run: nil) == [:])
+        #expect(TestStatusOverlay.statusesByLine(spec: spec, run: nil) == [1: .init(status: "notRun", note: "")])
     }
 
     @Test func JSONは行番号文字列キーの辞書() throws {

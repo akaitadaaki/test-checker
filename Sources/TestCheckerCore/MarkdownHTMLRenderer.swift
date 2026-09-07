@@ -300,7 +300,7 @@ public enum MarkdownHTMLRenderer: Sendable {
             const oldNote = li.querySelector(':scope > .test-note');
             if (oldNote) oldNote.remove();
             const entry = i < blockLines.length ? byLine[blockLines[i]] : null;
-            if (!entry) return;
+            if (!entry || entry.status === 'notRun') return;
             li.classList.add('test-item', 'test-' + entry.status);
             const span = document.createElement('span');
             span.className = 'test-mark';
