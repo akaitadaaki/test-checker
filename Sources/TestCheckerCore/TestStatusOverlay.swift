@@ -12,14 +12,13 @@ public enum TestStatusOverlay {
         }
     }
 
-    /// 未実施は含めない(プレビュー側で装飾をリセットしてから適用するため)。
+    /// 全ケースを含める。プレビュー側はブロック内の checkbox 項目を「行の昇順」で
+    /// 対応付けるため、未実施の行が欠けると後続ケースの表示位置が前へズレる。
     public static func statusesByLine(spec: TestSpec, run: TestRun?) -> [Int: Entry] {
-        guard let run else { return [:] }
         var result: [Int: Entry] = [:]
         for testCase in spec.cases {
-            if let r = run.result(for: testCase.key) {
-                result[testCase.line] = Entry(status: r.status.rawValue, note: r.note)
-            }
+            let r = run?.result(for: testCase.key)
+            result[testCase.line] = Entry(status: r?.status.rawValue ?? TestStatus.notRun.rawValue, note: r?.note ?? "")
         }
         return result
     }
